@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VORTEX — Video Downloader</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Unbounded:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0f; --surface:#111118; --card:#16161f; --border:#252535;
+    --accent:#00f5a0; --accent2:#00c8ff; --accent3:#ff6b6b; --accent4:#f59e0b; --accent5:#a855f7;
+    --accent6:#f97316;
+    --text:#e8e8f0; --muted:#6060a0;
+    --mono:'Space Mono',monospace; --display:'Unbounded',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,245,160,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,160,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+  .orb{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0;}
+  .orb1{width:500px;height:500px;background:rgba(0,245,160,0.06);top:-150px;right:-100px;}
+  .orb2{width:400px;height:400px;background:rgba(0,200,255,0.05);bottom:-100px;left:-100px;}
+  .wrap{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:36px 20px 80px;}
+
+  header{text-align:center;margin-bottom:44px;}
+  .logo{font-family:var(--display);font-weight:900;font-size:clamp(2.2rem,7vw,4.5rem);letter-spacing:-0.02em;background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 60%,#a855f7 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;margin-bottom:6px;}
+  .tagline{color:var(--muted);font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;}
+  .chips{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-top:16px;}
+  .chip{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:3px 9px;font-size:0.62rem;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;}
+
+  .srv{display:flex;align-items:center;gap:8px;font-size:0.66rem;color:var(--muted);margin-bottom:24px;justify-content:center;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent3);}
+  .dot.on{background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px;margin-bottom:18px;}
+  .lbl{font-size:0.62rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:11px;}
+
+  .url-row{display:flex;gap:9px;}
+  .url-in{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:13px 15px;color:var(--text);font-family:var(--mono);font-size:0.83rem;outline:none;transition:border-color .2s;}
+  .url-in:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,245,160,.1);}
+  .url-in::placeholder{color:var(--muted);}
+  .btn{background:var(--accent);color:#000;border:none;border-radius:8px;padding:13px 20px;font-family:var(--display);font-weight:700;font-size:0.7rem;letter-spacing:.05em;cursor:pointer;transition:all .2s;white-space:nowrap;}
+  .btn:hover{background:#00ffaa;transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,245,160,.3);}
+  .btn:active{transform:none;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
+
+  /* MODES */
+  .mode-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;}
+  .mb{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 6px;cursor:pointer;transition:all .2s;text-align:center;}
+  .mb:hover{border-color:var(--muted);}
+  .mb.a-video{border-color:var(--accent);background:rgba(0,245,160,.08);}
+  .mb.a-audio{border-color:var(--accent2);background:rgba(0,200,255,.08);}
+  .mb.a-clean{border-color:var(--accent4);background:rgba(245,158,11,.08);}
+  .mb.a-clean_wm{border-color:var(--accent5);background:rgba(168,85,247,.1);}
+  .mb.a-clip{border-color:var(--accent6);background:rgba(249,115,22,.1);}
+  .mi{font-size:1.2rem;display:block;margin-bottom:5px;}
+  .mn{font-family:var(--display);font-weight:700;font-size:0.6rem;display:block;}
+  .md{font-size:0.54rem;color:var(--muted);margin-top:2px;display:block;line-height:1.3;}
+  .mb.a-video .mn{color:var(--accent);}
+  .mb.a-audio .mn{color:var(--accent2);}
+  .mb.a-clean .mn{color:var(--accent4);}
+  .mb.a-clean_wm .mn{color:var(--accent5);}
+  .mb.a-clip .mn{color:var(--accent6);}
+
+  /* REGION PICKER */
+  .region-panel{display:none;margin-top:16px;background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.25);border-radius:10px;padding:16px;}
+  .region-panel.show{display:block;}
+  .region-header{font-size:0.68rem;color:var(--accent5);margin-bottom:12px;}
+  .region-canvas-wrap{position:relative;display:inline-block;max-width:100%;border:1px solid rgba(168,85,247,.3);border-radius:8px;overflow:hidden;cursor:crosshair;}
+  #regionCanvas{display:block;max-width:100%;height:auto;}
+  .region-btns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .rbtn{background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:var(--accent5);border-radius:6px;padding:7px 14px;font-family:var(--mono);font-size:0.68rem;cursor:pointer;transition:all .2s;}
+  .rbtn:hover{background:rgba(168,85,247,.25);}
+  .region-list{margin-top:10px;display:flex;flex-direction:column;gap:5px;}
+  .region-item{display:flex;align-items:center;gap:8px;font-size:0.68rem;color:var(--muted);background:rgba(255,255,255,.03);border-radius:5px;padding:5px 10px;}
+  .region-item button{background:none;border:none;color:var(--accent3);cursor:pointer;font-size:0.8rem;padding:0 2px;}
+
+  /* ═══════════════════════════════════════
+     CLIP PANEL
+  ═══════════════════════════════════════ */
+  .clip-panel{display:none;margin-top:16px;background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.25);border-radius:12px;padding:18px;}
+  .clip-panel.show{display:block;animation:up .3s ease;}
+  .clip-panel-hdr{font-size:0.68rem;color:var(--accent6);margin-bottom:14px;display:flex;align-items:center;gap:7px;}
+  .clip-panel-hdr::before{content:'✂️';}
+
+  /* Timeline */
+  .timeline-wrap{position:relative;margin-bottom:18px;}
+  .timeline-track{position:relative;height:48px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;cursor:pointer;user-select:none;}
+  .timeline-thumb-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0.18;border-radius:8px;}
+  .timeline-fill{position:absolute;top:0;bottom:0;background:rgba(249,115,22,.3);border-left:2px solid var(--accent6);border-right:2px solid var(--accent6);pointer-events:none;}
+  .timeline-handle{position:absolute;top:0;bottom:0;width:10px;background:var(--accent6);border-radius:3px;cursor:ew-resize;z-index:3;display:flex;align-items:center;justify-content:center;}
+  .timeline-handle::after{content:'⋮';color:#000;font-size:10px;line-height:1;}
+  .tl-start{transform:translateX(-50%);}
+  .tl-end{transform:translateX(-50%);}
+  .timeline-labels{display:flex;justify-content:space-between;font-size:0.57rem;color:var(--muted);margin-top:5px;padding:0 2px;}
+
+  /* Time inputs row */
+  .clip-time-row{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:16px;}
+  .clip-time-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+  .clip-time-box label{display:block;font-size:0.55rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+  .clip-time-box input{background:none;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:0.85rem;width:100%;}
+  .clip-time-arrow{color:var(--muted);font-size:1rem;text-align:center;}
+  .clip-duration-badge{text-align:center;font-size:0.68rem;padding:6px 14px;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.25);border-radius:20px;color:var(--accent6);width:fit-content;margin:0 auto 16px;}
+
+  /* Aspect ratio selector */
+  .clip-ar-row{display:flex;gap:10px;margin-bottom:6px;}
+  .ar-btn{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 8px;cursor:pointer;transition:all .2s;text-align:center;}
+  .ar-btn:hover{border-color:var(--muted);}
+  .ar-btn.sel{border-color:var(--accent6);background:rgba(249,115,22,.08);}
+  .ar-icon{display:block;margin:0 auto 6px;border:2px solid currentColor;border-radius:2px;}
+  .ar-btn .ar-icon{color:var(--muted);}
+  .ar-btn.sel .ar-icon{color:var(--accent6);}
+  .ar-orig .ar-icon{width:26px;height:17px;}
+  .ar-916 .ar-icon{width:13px;height:23px;}
+  .ar-name{font-family:var(--display);font-weight:700;font-size:0.65rem;display:block;}
+  .ar-btn.sel .ar-name{color:var(--accent6);}
+  .ar-hint{font-size:0.55rem;color:var(--muted);display:block;margin-top:2px;}
+  .ar-916-preview{display:none;margin-top:8px;padding:8px 12px;background:rgba(249,115,22,.07);border:1px solid rgba(249,115,22,.2);border-radius:6px;font-size:0.65rem;color:var(--accent6);}
+  .ar-916-preview.show{display:block;}
+
+  /* VIDEO INFO */
+  .info-card{display:none;animation:up .3s ease;}
+  @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  .vmeta{display:flex;gap:16px;margin-bottom:20px;}
+  .thumb{width:125px;height:78px;object-fit:cover;border-radius:7px;border:1px solid var(--border);flex-shrink:0;background:var(--surface);}
+  .tph{width:125px;height:78px;border-radius:7px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.6rem;}
+  .vd{flex:1;min-width:0;}
+  .vt{font-family:var(--display);font-weight:700;font-size:0.88rem;line-height:1.4;margin-bottom:5px;word-break:break-word;}
+  .vu{color:var(--muted);font-size:0.68rem;margin-bottom:3px;}
+  .vdur{color:var(--accent);font-size:0.68rem;}
+
+  .notice{border-radius:8px;padding:11px 15px;font-size:0.72rem;margin-bottom:14px;display:none;}
+  .n-audio{background:rgba(0,200,255,.07);border:1px solid rgba(0,200,255,.2);color:var(--accent2);}
+  .n-clean{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);color:var(--accent4);}
+  .n-clean_wm{background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.2);color:var(--accent5);}
+  .n-clip{background:rgba(249,115,22,.07);border:1px solid rgba(249,115,22,.2);color:var(--accent6);}
+
+  .fgrid{display:flex;flex-direction:column;gap:6px;max-height:290px;overflow-y:auto;padding-right:3px;}
+  .fgrid::-webkit-scrollbar{width:3px;}
+  .fgrid::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .fr{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 13px;cursor:pointer;transition:all .15s;}
+  .fr:hover{border-color:var(--accent);background:rgba(0,245,160,.04);}
+  .fr.sel{border-color:var(--accent);background:rgba(0,245,160,.08);}
+  .frad{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+  .fr.sel .frad{border-color:var(--accent);background:var(--accent);}
+  .fr.sel .frad::after{content:'';width:5px;height:5px;border-radius:50%;background:#000;}
+  .flbl{flex:1;font-size:0.78rem;font-family:var(--display);}
+  .fbadge{font-size:0.57rem;letter-spacing:.1em;padding:2px 6px;border-radius:3px;text-transform:uppercase;font-weight:700;}
+  .b-best{background:rgba(0,245,160,.15);color:var(--accent);border:1px solid rgba(0,245,160,.3);}
+  .b-4k{background:rgba(168,85,247,.15);color:#c084fc;border:1px solid rgba(168,85,247,.3);}
+  .b-hd{background:rgba(0,200,255,.15);color:var(--accent2);border:1px solid rgba(0,200,255,.3);}
+  .b-sd{background:rgba(96,96,160,.15);color:var(--muted);border:1px solid rgba(96,96,160,.3);}
+  .fsz{font-size:0.63rem;color:var(--muted);white-space:nowrap;}
+
+  .dir-row{display:flex;gap:9px;margin-top:13px;}
+  .dir-in{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:9px 13px;color:var(--muted);font-family:var(--mono);font-size:0.68rem;outline:none;}
+
+  .btn-dl{width:100%;padding:15px;font-size:0.8rem;border-radius:10px;margin-top:16px;border:none;font-family:var(--display);font-weight:700;cursor:pointer;transition:all .2s;color:#000;}
+  .btn-dl:hover{opacity:.9;transform:translateY(-1px);}
+  .btn-dl:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+  .btn-dl.m-video{background:linear-gradient(135deg,var(--accent),var(--accent2));}
+  .btn-dl.m-audio{background:linear-gradient(135deg,var(--accent2),#6366f1);}
+  .btn-dl.m-clean{background:linear-gradient(135deg,var(--accent4),#ef4444);}
+  .btn-dl.m-clean_wm{background:linear-gradient(135deg,var(--accent5),#ec4899);color:#fff;}
+  .btn-dl.m-clip{background:linear-gradient(135deg,var(--accent6),#f59e0b);color:#000;}
+
+  /* PROGRESS */
+  .prog-card{display:none;animation:up .3s ease;}
+  .pt{font-family:var(--display);font-weight:700;font-size:0.8rem;margin-bottom:6px;line-height:1.4;}
+  .pstage{font-size:0.68rem;color:var(--muted);margin-bottom:14px;}
+  .pnums{display:flex;align-items:baseline;gap:11px;margin-bottom:12px;}
+  .ppct{font-family:var(--display);font-weight:700;color:var(--accent);font-size:1.35rem;}
+  .pmeta{font-size:0.68rem;color:var(--muted);}
+  .pbwrap{background:var(--surface);border-radius:4px;height:8px;overflow:hidden;}
+  .pb{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:4px;transition:width .4s ease;width:0%;}
+  .sdone{text-align:center;padding:13px;color:var(--accent);font-family:var(--display);font-weight:700;font-size:.9rem;}
+  .serr{text-align:center;padding:13px;color:var(--accent3);font-size:.72rem;word-break:break-all;}
+
+  /* QUEUE */
+  .q-card{display:none;}
+  .qi{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--border);font-size:.7rem;}
+  .qi:last-child{border-bottom:none;}
+  .qico{width:18px;text-align:center;flex-shrink:0;}
+  .qtit{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .qmod{font-size:.58rem;color:var(--muted);background:rgba(255,255,255,.05);padding:2px 6px;border-radius:3px;white-space:nowrap;}
+  .qprog{font-size:.65rem;color:var(--muted);white-space:nowrap;}
+
+  .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:5px;}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  footer{text-align:center;margin-top:44px;color:var(--muted);font-size:.6rem;letter-spacing:.1em;}
+
+  /* Quick timestamp jump buttons */
+  .tl-jumps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+  .tl-jump{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);color:var(--accent6);border-radius:5px;padding:4px 10px;font-size:0.6rem;font-family:var(--mono);cursor:pointer;transition:all .15s;}
+  .tl-jump:hover{background:rgba(249,115,22,.18);}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div><div class="orb orb2"></div>
+<div class="wrap">
+
+<header>
+  <div class="logo">VORTEX</div>
+  <div class="tagline">Video Downloader — Full Quality, Every Platform</div>
+  <div class="chips">
+    <span class="chip">YouTube</span><span class="chip">TikTok</span><span class="chip">Twitter/X</span>
+    <span class="chip">Instagram</span><span class="chip">Facebook</span><span class="chip">Vimeo</span>
+    <span class="chip">Twitch</span><span class="chip">1000+ sites</span>
+  </div>
+</header>
+
+<div class="srv"><div class="dot" id="sDot"></div><span id="sTxt">Connecting...</span></div>
+
+<!-- URL -->
+<div class="card">
+  <div class="lbl">Paste video URL</div>
+  <div class="url-row">
+    <input class="url-in" id="urlInput" type="url" placeholder="https://www.youtube.com/watch?v=..." spellcheck="false" autocomplete="off">
+    <button class="btn" id="fetchBtn" onclick="fetchInfo()">Analyze</button>
+  </div>
+</div>
+
+<!-- Modes -->
+<div class="card">
+  <div class="lbl">Download mode</div>
+  <div class="mode-grid">
+    <div class="mb a-video" id="m-video" onclick="setMode('video')">
+      <span class="mi">🎬</span><span class="mn">Video + Audio</span><span class="md">Merged MP4</span>
+    </div>
+    <div class="mb" id="m-audio" onclick="setMode('audio')">
+      <span class="mi">🎵</span><span class="mn">Audio Only</span><span class="md">320kbps MP3</span>
+    </div>
+    <div class="mb" id="m-clean" onclick="setMode('clean')">
+      <span class="mi">✂️</span><span class="mn">Strip Subs</span><span class="md">Remove soft captions</span>
+    </div>
+    <div class="mb" id="m-clean_wm" onclick="setMode('clean_wm')">
+      <span class="mi">🪄</span><span class="mn">Remove WM</span><span class="md">AI inpaint text</span>
+    </div>
+    <div class="mb" id="m-clip" onclick="setMode('clip')">
+      <span class="mi">🎞️</span><span class="mn">Make Clips</span><span class="md">Cut & reformat</span>
+    </div>
+  </div>
+
+  <!-- Watermark region picker -->
+  <div class="region-panel" id="regionPanel">
+    <div class="region-header">🎯 Optional: Draw regions to target (leave empty for auto-detection)</div>
+    <div class="region-canvas-wrap" id="canvasWrap">
+      <canvas id="regionCanvas" width="640" height="360"></canvas>
+    </div>
+    <div class="region-btns">
+      <button class="rbtn" onclick="clearRegions()">✕ Clear all regions</button>
+      <button class="rbtn" onclick="addPreset('tiktok')">TikTok watermark</button>
+      <button class="rbtn" onclick="addPreset('caption')">Caption bar</button>
+      <button class="rbtn" onclick="addPreset('topleft')">Top-left logo</button>
+    </div>
+    <div class="region-list" id="regionList"></div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       CLIP PANEL
+  ══════════════════════════════════ -->
+  <div class="clip-panel" id="clipPanel">
+    <div class="clip-panel-hdr">Select clip range &amp; format</div>
+
+    <!-- Timeline scrubber -->
+    <div class="timeline-wrap" id="timelineWrap">
+      <div class="lbl">Clip timeline — drag handles to set in / out points</div>
+      <div class="timeline-track" id="timelineTrack">
+        <div class="timeline-thumb-bg" id="tlThumbBg"></div>
+        <div class="timeline-fill" id="tlFill"></div>
+        <div class="timeline-handle tl-start" id="tlHandleStart" title="Drag start">⠿</div>
+        <div class="timeline-handle tl-end"   id="tlHandleEnd"   title="Drag end">⠿</div>
+      </div>
+      <div class="timeline-labels">
+        <span id="tlLabelLeft">0:00</span>
+        <span id="tlLabelMid"></span>
+        <span id="tlLabelRight">0:00</span>
+      </div>
+    </div>
+
+    <!-- Quick presets -->
+    <div class="tl-jumps" id="tlJumps" style="display:none">
+      <span style="font-size:0.6rem;color:var(--muted);align-self:center;margin-right:4px;">QUICK:</span>
+    </div>
+
+    <!-- Manual time inputs -->
+    <div class="clip-time-row">
+      <div class="clip-time-box">
+        <label>Start time</label>
+        <input type="text" id="clipStart" placeholder="0:00" oninput="onTimeInput('start')">
+      </div>
+      <div class="clip-time-arrow">→</div>
+      <div class="clip-time-box">
+        <label>End time</label>
+        <input type="text" id="clipEnd" placeholder="0:30" oninput="onTimeInput('end')">
+      </div>
+    </div>
+    <div class="clip-duration-badge" id="clipDurBadge">Duration: 0s</div>
+
+    <!-- Aspect ratio -->
+    <div class="lbl">Output format</div>
+    <div class="clip-ar-row">
+      <div class="ar-btn ar-orig sel" id="ar-original" onclick="setAR('original')">
+        <span class="ar-icon"></span>
+        <span class="ar-name">Original</span>
+        <span class="ar-hint">Keep source ratio</span>
+      </div>
+      <div class="ar-btn ar-916" id="ar-9:16" onclick="setAR('9:16')">
+        <span class="ar-icon"></span>
+        <span class="ar-name">9:16 Vertical</span>
+        <span class="ar-hint">TikTok / Reels / Shorts</span>
+      </div>
+    </div>
+    <div class="ar-916-preview" id="ar916preview">
+      📱 Output will be <strong>1080×1920</strong> — cropped from center of frame. Perfect for TikTok, Instagram Reels &amp; YouTube Shorts.
+    </div>
+  </div>
+</div>
+
+<!-- Video Info -->
+<div class="card info-card" id="infoCard">
+  <div class="vmeta">
+    <div id="thumbWrap"></div>
+    <div class="vd">
+      <div class="vt" id="vTitle">—</div>
+      <div class="vu" id="vUp"></div>
+      <div class="vdur" id="vDur"></div>
+    </div>
+  </div>
+
+  <div class="notice n-audio" id="nAudio">🎵 Audio Only — downloads best audio as MP3 320kbps. Format below is ignored.</div>
+  <div class="notice n-clean" id="nClean">✂️ Strip Subs — removes all soft subtitle/caption tracks from the file container.</div>
+  <div class="notice n-clean_wm" id="nWM">🪄 Watermark Removal — downloads video then runs AI inpainting to erase burned-in text, logos, and captions. <strong style="color:var(--accent5)">This takes longer than a normal download.</strong></div>
+  <div class="notice n-clip" id="nClip">🎞️ Make Clips — downloads the full video, then cuts &amp; re-encodes your selected range. Large videos may take a moment to download first.</div>
+
+  <div class="lbl" id="fmtLbl">Select quality</div>
+  <div class="fgrid" id="fmtGrid"></div>
+
+  <div class="dir-row">
+    <input class="dir-in" id="outDir" placeholder="Loading..." readonly>
+  </div>
+  <button class="btn-dl m-video" id="dlBtn" onclick="startDownload()">↓ Download</button>
+</div>
+
+<!-- Progress -->
+<div class="card prog-card" id="progCard">
+  <div class="pt" id="progTitle">Downloading...</div>
+  <div class="pstage" id="progStage"></div>
+  <div class="pnums">
+    <span class="ppct" id="progPct">0%</span>
+    <span class="pmeta" id="progSpeed"></span>
+    <span class="pmeta" id="progEta"></span>
+  </div>
+  <div class="pbwrap"><div class="pb" id="progBar"></div></div>
+  <div id="progStatus"></div>
+</div>
+
+<!-- Queue -->
+<div class="card q-card" id="qCard">
+  <div class="lbl" style="margin-bottom:10px">History</div>
+  <div id="qList"></div>
+</div>
+
+<footer>VORTEX v4 — yt-dlp + ffmpeg + OpenCV inpainting + Tesseract OCR</footer>
+</div>
+
+<script>
+const API = 'http://localhost:7842';
+let selFmt = 'best', curMode = 'video', pollTimer = null, queue = [];
+let regions = [];
+let drawing = false, startX = 0, startY = 0;
+let thumbData = null;
+let videoDuration = 0;
+let clipStartSec = 0, clipEndSec = 30;
+let selAR = 'original';
+
+// ─── Server ───
+async function checkServer() {
+  try {
+    const r = await fetch(`${API}/default-dir`);
+    const d = await r.json();
+    document.getElementById('sDot').classList.add('on');
+    document.getElementById('sTxt').textContent = 'Server online';
+    document.getElementById('outDir').value = d.dir;
+  } catch {
+    document.getElementById('sDot').classList.remove('on');
+    document.getElementById('sTxt').textContent = 'Server offline — run server.py first';
+  }
+}
+checkServer(); setInterval(checkServer, 5000);
+
+// ─── Mode ───
+function setMode(m) {
+  curMode = m;
+  ['video','audio','clean','clean_wm','clip'].forEach(x => {
+    document.getElementById('m-'+x).className = 'mb' + (x===m ? ' a-'+x : '');
+  });
+  ['nAudio','nClean','nWM','nClip'].forEach(id => document.getElementById(id).style.display='none');
+  if (m==='audio')    document.getElementById('nAudio').style.display='block';
+  if (m==='clean')    document.getElementById('nClean').style.display='block';
+  if (m==='clean_wm') document.getElementById('nWM').style.display='block';
+  if (m==='clip')     document.getElementById('nClip').style.display='block';
+
+  document.getElementById('fmtGrid').style.opacity = m==='audio' ? '0.4' : '1';
+  document.getElementById('regionPanel').className = 'region-panel' + (m==='clean_wm' ? ' show' : '');
+  document.getElementById('clipPanel').className = 'clip-panel' + (m==='clip' ? ' show' : '');
+
+  const btn = document.getElementById('dlBtn');
+  const labels = {
+    video:'↓ Download',
+    audio:'♫ Download MP3',
+    clean:'✂️ Download (Strip Subs)',
+    clean_wm:'🪄 Download + Remove Watermarks',
+    clip:'🎞️ Download Clip'
+  };
+  btn.textContent = labels[m];
+  btn.className = 'btn-dl m-'+m;
+}
+
+// ─── Aspect ratio ───
+function setAR(ar) {
+  selAR = ar;
+  ['original','9:16'].forEach(a => {
+    document.getElementById('ar-'+a).classList.toggle('sel', a===ar);
+  });
+  document.getElementById('ar916preview').classList.toggle('show', ar==='9:16');
+}
+
+// ─── Canvas region picker ───
+const canvas = document.getElementById('regionCanvas');
+const ctx = canvas.getContext('2d');
+
+function drawCanvas() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#0d0d15';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  if (thumbData) {
+    const img = new Image();
+    img.src = thumbData;
+    ctx.globalAlpha = 0.5;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = 1;
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+  for(let x=0;x<canvas.width;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+  for(let y=0;y<canvas.height;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+  regions.forEach((r,i) => {
+    ctx.fillStyle = 'rgba(168,85,247,0.3)'; ctx.fillRect(r.x,r.y,r.w,r.h);
+    ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 2; ctx.strokeRect(r.x,r.y,r.w,r.h);
+    ctx.fillStyle = '#a855f7'; ctx.font = 'bold 11px monospace'; ctx.fillText(`#${i+1}`, r.x+4, r.y+14);
+  });
+}
+drawCanvas();
+
+function getCanvasXY(e) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: (e.clientX-rect.left)*(canvas.width/rect.width), y: (e.clientY-rect.top)*(canvas.height/rect.height) };
+}
+canvas.addEventListener('mousedown', e => { const {x,y}=getCanvasXY(e); drawing=true; startX=x; startY=y; });
+canvas.addEventListener('mousemove', e => {
+  if(!drawing) return; const {x,y}=getCanvasXY(e); drawCanvas();
+  ctx.fillStyle='rgba(168,85,247,0.25)'; ctx.fillRect(startX,startY,x-startX,y-startY);
+  ctx.strokeStyle='#a855f7'; ctx.lineWidth=2; ctx.strokeRect(startX,startY,x-startX,y-startY);
+});
+canvas.addEventListener('mouseup', e => {
+  if(!drawing) return; drawing=false; const {x,y}=getCanvasXY(e);
+  const rx=Math.min(startX,x), ry=Math.min(startY,y), rw=Math.abs(x-startX), rh=Math.abs(y-startY);
+  if(rw>10&&rh>10) regions.push({x:rx,y:ry,w:rw,h:rh});
+  drawCanvas(); renderRegions();
+});
+function renderRegions() {
+  document.getElementById('regionList').innerHTML = regions.map((r,i) => `
+    <div class="region-item"><span style="color:var(--accent5)">#${i+1}</span>
+    <span>x:${Math.round(r.x)} y:${Math.round(r.y)} ${Math.round(r.w)}×${Math.round(r.h)}px</span>
+    <button onclick="removeRegion(${i})">✕</button></div>`).join('');
+}
+function removeRegion(i) { regions.splice(i,1); drawCanvas(); renderRegions(); }
+function clearRegions() { regions=[]; drawCanvas(); renderRegions(); }
+function addPreset(type) {
+  const W=canvas.width, H=canvas.height;
+  const p = {tiktok:{x:W*.68,y:H*.72,w:W*.32,h:H*.28}, caption:{x:W*.03,y:H*.80,w:W*.94,h:H*.18}, topleft:{x:0,y:0,w:W*.28,h:H*.14}}[type];
+  regions.push({x:Math.round(p.x),y:Math.round(p.y),w:Math.round(p.w),h:Math.round(p.h)});
+  drawCanvas(); renderRegions();
+}
+function getScaledRegions(vidW,vidH) {
+  const sx=vidW/canvas.width, sy=vidH/canvas.height;
+  return regions.map(r=>[Math.round(r.x*sx),Math.round(r.y*sy),Math.round(r.w*sx),Math.round(r.h*sy)]);
+}
+
+// ══════════════════════════════════════
+// CLIP TIMELINE
+// ══════════════════════════════════════
+const tlTrack   = document.getElementById('timelineTrack');
+const tlFill    = document.getElementById('tlFill');
+const tlStart   = document.getElementById('tlHandleStart');
+const tlEnd     = document.getElementById('tlHandleEnd');
+
+function secToStr(s) {
+  s = Math.round(s);
+  const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), ss=s%60;
+  if(h) return `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  return `${m}:${String(ss).padStart(2,'0')}`;
+}
+
+function parseTime(str) {
+  str = str.trim();
+  // Formats: ss, m:ss, h:mm:ss, or raw number
+  const parts = str.split(':').map(Number);
+  if(parts.length===1) return isNaN(parts[0]) ? null : parts[0];
+  if(parts.length===2) return parts[0]*60 + parts[1];
+  if(parts.length===3) return parts[0]*3600 + parts[1]*60 + parts[2];
+  return null;
+}
+
+function updateTimeline() {
+  if(!videoDuration) return;
+  const startPct = clipStartSec / videoDuration * 100;
+  const endPct   = clipEndSec   / videoDuration * 100;
+  tlFill.style.left  = startPct + '%';
+  tlFill.style.width = (endPct - startPct) + '%';
+  tlStart.style.left = startPct + '%';
+  tlEnd.style.left   = endPct   + '%';
+
+  document.getElementById('tlLabelLeft').textContent  = secToStr(0);
+  document.getElementById('tlLabelMid').textContent   = secToStr(videoDuration / 2);
+  document.getElementById('tlLabelRight').textContent = secToStr(videoDuration);
+
+  document.getElementById('clipStart').value = secToStr(clipStartSec);
+  document.getElementById('clipEnd').value   = secToStr(clipEndSec);
+  updateDurBadge();
+}
+
+function updateDurBadge() {
+  const dur = Math.max(0, clipEndSec - clipStartSec);
+  const badge = document.getElementById('clipDurBadge');
+  const m = Math.floor(dur/60), s = Math.round(dur%60);
+  badge.textContent = `Duration: ${m>0?m+'m ':''} ${s}s`;
+}
+
+// Drag logic
+let dragging = null;
+function startDrag(e, which) {
+  e.preventDefault(); dragging = which;
+  document.addEventListener('mousemove', onDrag);
+  document.addEventListener('mouseup', stopDrag);
+  // Touch
+  document.addEventListener('touchmove', onDragTouch, {passive:false});
+  document.addEventListener('touchend', stopDrag);
+}
+function getTrackPct(clientX) {
+  const rect = tlTrack.getBoundingClientRect();
+  return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+}
+function onDrag(e) {
+  if(!dragging || !videoDuration) return;
+  const pct = getTrackPct(e.clientX);
+  const sec = pct * videoDuration;
+  if(dragging==='start') clipStartSec = Math.min(sec, clipEndSec - 1);
+  else                   clipEndSec   = Math.max(sec, clipStartSec + 1);
+  clipStartSec = Math.max(0, Math.min(clipStartSec, videoDuration));
+  clipEndSec   = Math.max(0, Math.min(clipEndSec, videoDuration));
+  updateTimeline();
+}
+function onDragTouch(e) { e.preventDefault(); onDrag(e.touches[0]); }
+function stopDrag() {
+  dragging = null;
+  document.removeEventListener('mousemove', onDrag);
+  document.removeEventListener('mouseup', stopDrag);
+  document.removeEventListener('touchmove', onDragTouch);
+  document.removeEventListener('touchend', stopDrag);
+}
+tlStart.addEventListener('mousedown', e => startDrag(e, 'start'));
+tlEnd.addEventListener('mousedown',   e => startDrag(e, 'end'));
+tlStart.addEventListener('touchstart', e => startDrag(e, 'start'), {passive:false});
+tlEnd.addEventListener('touchstart',   e => startDrag(e, 'end'),   {passive:false});
+
+// Click on track to jump nearest handle
+tlTrack.addEventListener('click', e => {
+  if(!videoDuration || dragging) return;
+  const pct = getTrackPct(e.clientX);
+  const sec = pct * videoDuration;
+  const dStart = Math.abs(sec - clipStartSec);
+  const dEnd   = Math.abs(sec - clipEndSec);
+  if(dStart < dEnd) clipStartSec = Math.min(sec, clipEndSec - 1);
+  else              clipEndSec   = Math.max(sec, clipStartSec + 1);
+  updateTimeline();
+});
+
+function onTimeInput(which) {
+  const raw = document.getElementById(which==='start' ? 'clipStart' : 'clipEnd').value;
+  const sec = parseTime(raw);
+  if(sec === null || isNaN(sec)) return;
+  if(which==='start') clipStartSec = Math.max(0, Math.min(sec, videoDuration));
+  else                clipEndSec   = Math.max(0, Math.min(sec, videoDuration));
+  if(clipEndSec <= clipStartSec) {
+    if(which==='start') clipEndSec   = Math.min(clipStartSec + 1, videoDuration);
+    else                clipStartSec = Math.max(clipEndSec - 1, 0);
+  }
+  updateTimeline();
+}
+
+function buildQuickJumps(dur) {
+  const jumpsEl = document.getElementById('tlJumps');
+  jumpsEl.style.display = 'flex';
+  // Keep existing label
+  const spans = jumpsEl.querySelectorAll('.tl-jump');
+  spans.forEach(s => s.remove());
+
+  const presets = [];
+  if(dur > 60)  presets.push(['First 30s', 0, 30]);
+  if(dur > 120) presets.push(['First 1m',  0, 60]);
+  if(dur > 300) presets.push(['Middle 1m', Math.floor(dur/2)-30, Math.floor(dur/2)+30]);
+  presets.push(['Full video', 0, dur]);
+
+  presets.forEach(([lbl, s, e]) => {
+    const btn = document.createElement('button');
+    btn.className = 'tl-jump';
+    btn.textContent = lbl;
+    btn.onclick = () => { clipStartSec = s; clipEndSec = Math.min(e, dur); updateTimeline(); };
+    jumpsEl.appendChild(btn);
+  });
+}
+
+// ─── Fetch info ───
+let videoW = 1280, videoH = 720;
+function fmt_dur(s) {
+  if(!s) return '';
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  return h?`${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`:`${m}:${String(sec).padStart(2,'0')}`;
+}
+function badge(f) {
+  if(f.id==='best') return '<span class="fbadge b-best">BEST</span>';
+  if(f.height>=2160) return '<span class="fbadge b-4k">4K</span>';
+  if(f.height>=720) return `<span class="fbadge b-hd">${f.height>=1080?'FHD':'HD'}</span>`;
+  return '<span class="fbadge b-sd">SD</span>';
+}
+
+async function fetchInfo() {
+  const url = document.getElementById('urlInput').value.trim();
+  if(!url) return;
+  const btn = document.getElementById('fetchBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>Analyzing...';
+  document.getElementById('infoCard').style.display='none';
+
+  try {
+    const r = await fetch(`${API}/info`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
+    const d = await r.json();
+    if(d.error){alert('Error: '+d.error);return;}
+
+    document.getElementById('vTitle').textContent = d.title||'Unknown';
+    document.getElementById('vUp').textContent = d.uploader?'@ '+d.uploader:'';
+    document.getElementById('vDur').textContent = fmt_dur(d.duration);
+
+    // Store duration & init clip
+    videoDuration = d.duration || 0;
+    clipStartSec  = 0;
+    clipEndSec    = Math.min(30, videoDuration);
+    if(videoDuration > 0) { updateTimeline(); buildQuickJumps(videoDuration); }
+
+    const tw = document.getElementById('thumbWrap');
+    if(d.thumbnail){
+      tw.innerHTML=`<img class="thumb" src="${d.thumbnail}" onerror="this.style.display='none'" alt="">`;
+      thumbData = d.thumbnail;
+      // Set clip timeline bg
+      document.getElementById('tlThumbBg').style.backgroundImage = `url('${d.thumbnail}')`;
+    } else {
+      tw.innerHTML=`<div class="tph">▶</div>`; thumbData=null;
+    }
+    drawCanvas();
+
+    const best = d.formats.find(f=>f.height<9000);
+    if(best){ videoW=best.height*16/9||1280; videoH=best.height||720; }
+
+    const grid = document.getElementById('fmtGrid');
+    grid.innerHTML=''; selFmt='best';
+    d.formats.forEach((f,i)=>{
+      const row=document.createElement('div');
+      row.className='fr'+(i===0?' sel':''); row.dataset.id=f.id;
+      row.innerHTML=`<div class="frad"></div><div class="flbl">${f.label}</div>${badge(f)}<div class="fsz">${f.size}</div>`;
+      if(i===0) row.querySelector('.frad').innerHTML='<div style="width:5px;height:5px;border-radius:50%;background:#000"></div>';
+      row.onclick=()=>{
+        document.querySelectorAll('.fr').forEach(r=>{r.classList.remove('sel');r.querySelector('.frad').innerHTML='';});
+        row.classList.add('sel'); row.querySelector('.frad').innerHTML='<div style="width:5px;height:5px;border-radius:50%;background:#000"></div>';
+        selFmt=f.id;
+      };
+      grid.appendChild(row);
+    });
+
+    document.getElementById('infoCard').style.display='block';
+    setMode(curMode);
+  } catch(e){
+    alert('Cannot connect to server. Make sure server.py is running!');
+  } finally {
+    btn.disabled=false; btn.textContent='Analyze';
+  }
+}
+
+// ─── Download / Clip ───
+async function startDownload() {
+  const url = document.getElementById('urlInput').value.trim();
+  const outDir = document.getElementById('outDir').value;
+  const title = document.getElementById('vTitle').textContent;
+  const btn = document.getElementById('dlBtn');
+  btn.disabled=true;
+
+  if(curMode === 'clip') {
+    // Validate
+    if(clipEndSec <= clipStartSec) {
+      alert('End time must be after start time.');
+      btn.disabled=false; return;
+    }
+    try {
+      const r = await fetch(`${API}/clip`,{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          url, format_id: selFmt, output_dir: outDir,
+          start_sec: clipStartSec, end_sec: clipEndSec,
+          aspect_ratio: selAR
+        })
+      });
+      const d = await r.json();
+      if(d.error){alert(d.error);return;}
+      const arLabel = selAR==='9:16' ? '9:16 Vertical' : 'Original';
+      const modeLabel = `Clip ${secToStr(clipStartSec)}–${secToStr(clipEndSec)} (${arLabel})`;
+      addQueue(d.job_id, title, modeLabel);
+      showProgress(d.job_id, `✂️ ${title}`, 'linear-gradient(90deg,var(--accent6),var(--accent4))');
+    } catch(e){alert('Connection error');}
+    finally{btn.disabled=false; setMode(curMode);}
+    return;
+  }
+
+  // Regular download modes
+  const scaledRegions = curMode==='clean_wm' && regions.length>0 ? getScaledRegions(videoW,videoH) : null;
+  const modeLabel = {video:'Video+Audio',audio:'Audio MP3',clean:'Strip Subs',clean_wm:'No Watermarks'}[curMode];
+
+  try {
+    const r = await fetch(`${API}/download`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({url, format_id:selFmt, output_dir:outDir, mode:curMode, regions:scaledRegions})
+    });
+    const d = await r.json();
+    if(d.error){alert(d.error);return;}
+    addQueue(d.job_id, title, modeLabel);
+    showProgress(d.job_id, `↓ ${title}`, 'linear-gradient(90deg,var(--accent),var(--accent2))');
+  } catch(e){alert('Connection error');}
+  finally{btn.disabled=false; setMode(curMode);}
+}
+
+function showProgress(jobId, titleText, barColor) {
+  document.getElementById('progCard').style.display='block';
+  document.getElementById('progTitle').textContent=titleText;
+  document.getElementById('progStage').textContent='Starting...';
+  document.getElementById('progPct').textContent='0%';
+  document.getElementById('progBar').style.width='0%';
+  document.getElementById('progBar').style.background=barColor;
+  document.getElementById('progStatus').innerHTML='';
+  pollProgress(jobId);
+}
+
+function addQueue(id,title,mode){
+  queue.unshift({id,title,mode,status:'downloading',prog:'0%'});
+  document.getElementById('qCard').style.display='block'; renderQueue();
+}
+function renderQueue(){
+  const icons={done:'✅',error:'❌',downloading:'⏳'};
+  document.getElementById('qList').innerHTML=queue.map(q=>`
+    <div class="qi"><div class="qico">${icons[q.status]||'⏳'}</div>
+    <div class="qtit">${q.title}</div>
+    <div class="qmod">${q.mode}</div>
+    <div class="qprog">${q.status==='downloading'?q.prog:q.status}</div></div>`).join('');
+}
+
+function pollProgress(jobId){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer=setInterval(async()=>{
+    try{
+      const r=await fetch(`${API}/progress/${jobId}`);
+      const d=await r.json();
+      const pct=Math.round(d.progress||0);
+      document.getElementById('progPct').textContent=pct+'%';
+      document.getElementById('progBar').style.width=pct+'%';
+      document.getElementById('progSpeed').textContent=d.speed||'';
+      document.getElementById('progEta').textContent=d.eta?'ETA '+d.eta:'';
+      if(d.stage) document.getElementById('progStage').textContent=d.stage;
+      const q=queue.find(x=>x.id===jobId);
+      if(q){q.prog=pct+'%';renderQueue();}
+      if(d.status==='done'){
+        clearInterval(pollTimer);
+        document.getElementById('progBar').style.width='100%';
+        document.getElementById('progPct').textContent='100%';
+        document.getElementById('progBar').style.background='var(--accent)';
+        document.getElementById('progStage').textContent='';
+        document.getElementById('progStatus').innerHTML='<div class="sdone">✓ Complete!</div>';
+        if(q){q.status='done';renderQueue();}
+      } else if(d.status==='error'){
+        clearInterval(pollTimer);
+        document.getElementById('progBar').style.background='var(--accent3)';
+        document.getElementById('progStatus').innerHTML=`<div class="serr">✗ ${d.error}</div>`;
+        if(q){q.status='error';renderQueue();}
+      }
+    }catch(e){}
+  },700);
+}
+
+document.getElementById('urlInput').addEventListener('keydown',e=>{if(e.key==='Enter')fetchInfo();});
+</script>
+</body>
+</html>
